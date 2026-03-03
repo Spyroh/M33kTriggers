@@ -231,13 +231,13 @@ function M33kTriggers.ShowOnProc(aura_env, SpellID)
 end
 
 -- ShowProcStacks()
--- Shows the stacks of a proc in a given FontString when they are over 1. Requires having the proc added in the CDM Tracked Buffs.
+-- Shows the stacks of a proc in an Text Aura when they are over 1. Requires having the proc added in the CDM Tracked Buffs.
 function M33kTriggers.ShowProcStacks(aura_env, SpellID)
   local Frame = aura_env.region
   local Stacks = Frame.text
   if not Stacks then return end
 
-  -- Function that shows the stacks in our custom FontString
+  -- Function that sets the stacks number
   Frame.ShowProcStacks = function()
     if IsPanelShown() then return end -- Don't process if the panel is open
     Stacks:SetText("") -- This will empty the string if the proc is not added to the CDM

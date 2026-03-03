@@ -16,7 +16,7 @@ Shows the aura when an execute spell should be used (is off CD and target is bel
 Shows the aura when a proc is available. Requires having the proc added to the CDM.
 
 `M33kTriggers.ShowProcStacks(aura_env, SpellID)`  
-Shows the stacks of a proc in the Aura's text when they are over 1. Requires having the proc added to the CDM Tracked Buffs.  
+Shows the stacks of a proc in a Text Aura when they are over 1. Requires having the proc added to the CDM Tracked Buffs.  
 
 ## Unload. Use in *Actions -> Custom functions -> Custom Unload*
 `if aura_env.UnLoad then aura_env.UnLoad() end`

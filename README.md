@@ -23,4 +23,4 @@ Shows the stacks of a proc in a Text Aura when they are over 1. Requires having 
 
 ## Example
 Example use to show an Aura when Mind Blast is off CD
-![Example image](https://i.imgur.com/ISeLAAM.png)
+![Example image](https://i.imgur.com/nPznSl1.png)

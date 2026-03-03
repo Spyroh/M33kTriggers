@@ -18,7 +18,7 @@ Shows the aura when a proc in available. Requires having the proc added to the C
 `M33kTriggers.ShowProcStacks(aura_env, SpellID)`  
 Shows the stacks of a proc in the Aura's text when they are over 1. Requires having the proc added to the CDM Tracked Buffs.  
 
-## Example uses. Must be added on *Actions -> Custom functions -> Custom Load*
+## Examples (*Actions -> Custom functions -> Custom Load*)
 `M33kTriggers.ShowOnCdReady(aura_env, 17)`  
 Shows the Aura when Power Word: Shield is off CD.
 
@@ -37,7 +37,7 @@ Shows the Aura when a proc of Surge of Light is available.
 `M33kTriggers.ShowProcStacks(aura_env, 109186)`  
 Shows the Surge of Light stacks (when higher than 1) in the Aura's text.
 
-## Unloading code. Must be added on *Actions -> Custom functions -> Custom Unload*
+## Unloading code (*Actions -> Custom functions -> Custom Unload*)
 `if aura_env.UnLoad then aura_env.UnLoad() end`
 
 ## Example image

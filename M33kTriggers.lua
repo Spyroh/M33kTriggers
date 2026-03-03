@@ -196,6 +196,7 @@ function M33kTriggers.ShowOnProc(aura_env, SpellID)
   -- Function that shows the frame if the proc is present
   Frame.CheckProcPresence = function()
     if IsPanelShown() then return end -- Don't process if the panel is open
+    Frame:Hide() -- This will hide the frame if the proc is not added to the CDM
 
     -- Buff icons
     for BuffIcon in BuffIconCooldownViewer.itemFramePool:EnumerateActive() do
@@ -239,6 +240,7 @@ function M33kTriggers.ShowProcStacks(aura_env, SpellID)
   -- Function that shows the stacks in our custom FontString
   Frame.ShowProcStacks = function()
     if IsPanelShown() then return end -- Don't process if the panel is open
+    Stacks:SetText("") -- This will empty the string if the proc is not added to the CDM
 
     for BuffIcon in BuffIconCooldownViewer.itemFramePool:EnumerateActive() do
       if BuffIcon:GetBaseSpellID() == SpellID then

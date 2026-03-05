@@ -29,7 +29,7 @@ ChargesAlphaCurve:SetType(Enum.LuaCurveType.Step)
 ChargesAlphaCurve:AddPoint(0, 1) -- Visible alpha for available (off CD)
 ChargesAlphaCurve:AddPoint(0.001, 0) -- Invisible alpha for unavailable (CD higher than 0)
 
--- Hooks to show the modded auras when the panel opens
+-- Hooks to show the modded auras when the M33kAuras panel opens
 hooksecurefunc("CreateFrame", function(_, Name)
   if Name ~= "M33kAurasOptions" then return end
   Panel = M33kAurasOptions
@@ -42,11 +42,13 @@ hooksecurefunc("CreateFrame", function(_, Name)
     end
   end)
 
-  Panel:HookScript("OnHide", function()
-    for M33kAura in pairs(LoadedAuras) do -- Auras back to normal when the panel closes
-      if M33kAura.text then M33kAura.text:SetText("") end
-      M33kAura.UpdateFunc()
-    end
+  RunNextFrame(function() -- Needed cuz the OnHide script gets overwritten in the current frame
+    Panel:HookScript("OnHide", function()
+      for M33kAura in pairs(LoadedAuras) do -- Auras back to normal when the panel closes
+        if M33kAura.text then M33kAura.text:SetText("") end
+        M33kAura.UpdateFunc()
+      end
+    end)
   end)
 end)
 
@@ -58,24 +60,24 @@ end
 
 -- ShowOnCdReady()
 -- Shows a M33kAura when a spell is off CD.
-function M33kTriggers.ShowOnCdReady(aura_env, SpellID)
+function M33kTriggers.ShowOnCdReady(aura_env, SpellIdentifier)
   local Frame = aura_env.region
 
   -- Function that shows the frame if the CD is available
   Frame.ShowIfCdReady = function()
-    if C_Spell.GetSpellCooldown(SpellID).isOnGCD or IsPanelShown() then -- CD ready but on GCD
+    if C_Spell.GetSpellCooldown(SpellIdentifier).isOnGCD or IsPanelShown() then -- CD ready but on GCD
       Frame:SetAlpha(1)
     else -- Not on GCD, make visible if ready
-      Frame:SetAlpha(C_Spell.GetSpellCooldownDuration(SpellID):EvaluateRemainingDuration(CdAlphaCurve))
+      Frame:SetAlpha(C_Spell.GetSpellCooldownDuration(SpellIdentifier):EvaluateRemainingDuration(CdAlphaCurve))
     end
   end
 
-  Frame:Show()
+  Frame.UpdateFunc = Frame.ShowIfCdReady -- Used by the M33kAurasOptions OnHide hook
   Frame.ShowIfCdReady()
-  Frame.UpdateFunc = Frame.ShowIfCdReady -- Used by M33kAurasOptions OnHide hook
+  Frame:Show()
 
   -- Spells with charges
-  if C_Spell.GetSpellCharges(SpellID) then
+  if C_Spell.GetSpellCharges(SpellIdentifier) then
     Frame:RegisterEvent("SPELL_UPDATE_CHARGES")
     Frame:SetScript("OnEvent", function(_, Event)
       if Event == "SPELL_UPDATE_CHARGES" then Frame.ShowIfCdReady() end
@@ -109,29 +111,30 @@ function M33kTriggers.ShowOnCdReady(aura_env, SpellID)
     end
   end
 
-  aura_env.UnLoad = Frame.UnLoad -- Easy reference for the user for the custom unload editbox
+  aura_env.UnLoad = Frame.UnLoad -- Easier reference for the user for the custom unload editbox
   LoadedAuras[Frame] = Frame
 end
 
 -- ShowOnAllChargesReady()
 -- Shows a M33kAura when all the charges of a spell are available.
-function M33kTriggers.ShowOnAllChargesReady(aura_env, SpellID)
+function M33kTriggers.ShowOnAllChargesReady(aura_env, SpellIdentifier)
   local Frame = aura_env.region
 
   -- Function that shows the frame when all charges are available
   Frame.ShowIfAllChargesReady = function()
-    if IsPanelShown() then Frame:SetAlpha(1) -- Always show when the panel is open
-    else Frame:SetAlpha(C_Spell.GetSpellChargeDuration(SpellID):EvaluateRemainingDuration(ChargesAlphaCurve)) end
+    if IsPanelShown() then Frame:SetAlpha(1) -- Always show when the M33kAuras panel is open
+    else Frame:SetAlpha(C_Spell.GetSpellChargeDuration(SpellIdentifier):EvaluateRemainingDuration(ChargesAlphaCurve)) end
   end
+  Frame.UpdateFunc = Frame.ShowIfAllChargesReady -- Used by the M33kAurasOptions OnHide hook
 
+  -- Event
   Frame:RegisterEvent("SPELL_UPDATE_CHARGES")
   Frame:SetScript("OnEvent", Frame.ShowIfAllChargesReady)
-  Frame:Show()
   Frame.ShowIfAllChargesReady()
-  Frame.UpdateFunc = Frame.ShowIfAllChargesReady -- Used by M33kAurasOptions OnHide hook
+  Frame:Show()
 
   -- Function to unload the trigger
-  Frame.UnLoad = function()
+  aura_env.UnLoad = function()
     Frame:UnregisterAllEvents()
     Frame:SetScript("OnEvent", nil)
     Frame:Hide()
@@ -139,19 +142,52 @@ function M33kTriggers.ShowOnAllChargesReady(aura_env, SpellID)
     LoadedAuras[Frame] = nil
   end
 
-  aura_env.UnLoad = Frame.UnLoad -- Easy reference for the user for the custom unload editbox
+  LoadedAuras[Frame] = Frame
+end
+
+-- ShowOnSpellUsable()
+-- Shows a M33kAura when a spell is usable. For spells that have requirements for their activation like Rampage or Shadow Word: Madness.
+function M33kTriggers.ShowOnSpellUsable(aura_env, SpellIdentifier)
+  local Frame = aura_env.region
+
+  -- Function that shows the frame if the spell is usable
+  Frame.ShowIfSpellUsable = function()
+    if IsPanelShown() then -- Always show when the M33kAuras panel is open
+      Frame:SetAlpha(1)
+    else
+      local IsUsable = C_Spell.IsSpellUsable(SpellIdentifier)
+      Frame:SetAlphaFromBoolean(IsUsable)
+    end
+  end
+  Frame.UpdateFunc = Frame.ShowIfSpellUsable -- Used by the M33kAurasOptions OnHide hook
+
+  -- Event
+  Frame:RegisterEvent("SPELL_UPDATE_USABLE")
+  Frame:SetScript("OnEvent", Frame.ShowIfSpellUsable)
+  Frame.ShowIfSpellUsable()
+  Frame:Show()
+
+  -- Function to unload the trigger
+  aura_env.UnLoad = function()
+    Frame:UnregisterAllEvents()
+    Frame:SetScript("OnEvent", nil)
+    Frame:Hide()
+    Frame:SetAlpha(1)
+    LoadedAuras[Frame] = nil
+  end
+
   LoadedAuras[Frame] = Frame
 end
 
 -- ShowOnExecute()
--- Shows a M33kAura when an execute spell should be used (is off CD and target is below X% HP).
-function M33kTriggers.ShowOnExecute(aura_env, SpellID, BelowHpPercent)
+-- Shows a M33kAura when an execute-type spell should be used (is off CD and target is below X% HP).
+function M33kTriggers.ShowOnExecute(aura_env, SpellIdentifier, BelowHpPercent)
   local Frame = aura_env.region
   local Region = Frame.text or (Frame.texture and Frame.texture.texture)
   if not Region then return end
 
   -- The parent frame will only be visible when the execute spell is off CD
-  M33kTriggers.ShowOnCdReady(aura_env, SpellID)
+  M33kTriggers.ShowOnCdReady(aura_env, SpellIdentifier)
 
   -- Curve that generates a visible alpha in execute range
   Region.ExecuteCurve = Region.ExecuteCurve or C_CurveUtil.CreateCurve()
@@ -162,13 +198,13 @@ function M33kTriggers.ShowOnExecute(aura_env, SpellID, BelowHpPercent)
 
   -- Function that shows the region when the target is below X% HP
   Region.ShowIfShouldUseExecute = function()
-    if IsPanelShown() then Region:SetAlpha(1) -- Always show if the panel is open
+    if IsPanelShown() then Region:SetAlpha(1) -- Always show if the panel M33kAuras is open
     elseif not UnitExists("target") or not UnitCanAttack("player", "target") or UnitIsDeadOrGhost("target") then Region:SetAlpha(0)
     else Region:SetAlpha(UnitHealthPercent("target", true, Region.ExecuteCurve)) end
   end
-  Region.UpdateFunc = Region.ShowIfShouldUseExecute -- Used by M33kAurasOptions OnHide hook
+  Region.UpdateFunc = Region.ShowIfShouldUseExecute -- Used by the M33kAurasOptions OnHide hook
 
-  -- Making the Region visible only when the target is in execute range
+  -- Events
   Frame:RegisterEvent("PLAYER_TARGET_CHANGED")
   Frame:RegisterUnitEvent("UNIT_HEALTH", "target")
   Frame:HookScript("OnEvent", function(_, Event) 
@@ -188,6 +224,42 @@ function M33kTriggers.ShowOnExecute(aura_env, SpellID, BelowHpPercent)
   LoadedAuras[Region] = Region
 end
 
+-- ShowOnPowerPercent()
+-- Shows a M33kAura when the player's power is higher than or equal to a certain percentage.
+function M33kTriggers.ShowOnPowerPercent(aura_env, Percent)
+  local Frame = aura_env.region
+
+  -- Curve that generates a visible alpha in execute range
+  Frame.Curve = Frame.Curve or C_CurveUtil.CreateCurve()
+  Frame.Curve:SetType(Enum.LuaCurveType.Step)
+  Frame.Curve:ClearPoints()
+  Frame.Curve:AddPoint(0, 0) -- Invisible
+  Frame.Curve:AddPoint(Percent * 0.01, 1) -- Visible
+
+  -- Function that shows the frame if we have enough power %
+  Frame.ShowIfEnoughPower = function()
+    Frame:SetAlpha(UnitPowerPercent("player", UnitPowerType("player"), true, Frame.Curve))
+  end
+  Frame.UpdateFunc = Frame.ShowIfEnoughPower -- Used by the M33kAurasOptions OnHide hook
+
+  -- Event
+  Frame:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
+  Frame:SetScript("OnEvent", Frame.ShowIfEnoughPower)
+  Frame.ShowIfEnoughPower()
+  Frame:Show()
+
+  -- Function to unload the trigger
+  aura_env.UnLoad = function()
+    Frame:UnregisterAllEvents()
+    Frame:SetScript("OnEvent", nil)
+    Frame:Hide()
+    Frame:SetAlpha(1)
+    LoadedAuras[Frame] = nil
+  end
+
+  LoadedAuras[Frame] = Frame
+end
+
 -- ShowOnProc()
 -- Shows a M33kAura when a proc in available. Requires having the proc added in the CDM.
 function M33kTriggers.ShowOnProc(aura_env, SpellID)
@@ -195,7 +267,7 @@ function M33kTriggers.ShowOnProc(aura_env, SpellID)
 
   -- Function that shows the frame if the proc is present
   Frame.CheckProcPresence = function()
-    if IsPanelShown() then return end -- Don't process if the panel is open
+    if IsPanelShown() then return end -- Don't process if the M33kAuras panel is open
     Frame:Hide() -- This will hide the frame if the proc is not added to the CDM
 
     -- Buff icons
@@ -213,20 +285,20 @@ function M33kTriggers.ShowOnProc(aura_env, SpellID)
     end
   end
 
-  RunNextFrame(Frame.CheckProcPresence)
+  -- Event
   Frame:RegisterUnitEvent("UNIT_AURA", "player")
   Frame:SetScript("OnEvent", function() RunNextFrame(Frame.CheckProcPresence) end)
-  Frame.UpdateFunc = Frame.CheckProcPresence -- Used by M33kAurasOptions OnHide hook
+  Frame.UpdateFunc = Frame.CheckProcPresence -- Used by the M33kAurasOptions OnHide hook
+  RunNextFrame(Frame.CheckProcPresence)
 
   -- Function to unload the trigger
-  Frame.UnLoad = function()
+  aura_env.UnLoad = function()
     Frame:UnregisterAllEvents()
     Frame:SetScript("OnEvent", nil)
     Frame:Hide()
     LoadedAuras[Frame] = nil
   end
 
-  aura_env.UnLoad = Frame.UnLoad -- Easy reference for the user for the custom unload editbox
   LoadedAuras[Frame] = Frame
 end
 
@@ -239,7 +311,7 @@ function M33kTriggers.ShowProcStacks(aura_env, SpellID)
 
   -- Function that sets the stacks number
   Frame.ShowProcStacks = function()
-    if IsPanelShown() then return end -- Don't process if the panel is open
+    if IsPanelShown() then return end -- Don't process if the M33kAuras panel is open
     Stacks:SetText("") -- This will empty the string if the proc is not added to the CDM
 
     for BuffIcon in BuffIconCooldownViewer.itemFramePool:EnumerateActive() do
@@ -249,20 +321,20 @@ function M33kTriggers.ShowProcStacks(aura_env, SpellID)
     end
   end
 
-  RunNextFrame(Frame.ShowProcStacks)
+  -- Event
   Frame:Show()
   Frame:RegisterUnitEvent("UNIT_AURA", "player")
   Frame:SetScript("OnEvent", function() RunNextFrame(Frame.ShowProcStacks) end)
-  Frame.UpdateFunc = Frame.ShowProcStacks -- Used by M33kAurasOptions OnHide hook
+  Frame.UpdateFunc = Frame.ShowProcStacks -- Used by the M33kAurasOptions OnHide hook
+  RunNextFrame(Frame.ShowProcStacks)
 
   -- Function to unload the trigger
-  Frame.UnLoad = function()
+  aura_env.UnLoad = function()
     Frame:UnregisterAllEvents()
     Frame:SetScript("OnEvent", nil)
     Stacks:SetText("")
     LoadedAuras[Frame] = nil
   end
 
-  aura_env.UnLoad = Frame.UnLoad -- Easy reference for the user for the custom unload editbox
   LoadedAuras[Frame] = Frame
 end

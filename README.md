@@ -17,7 +17,7 @@ Shows the aura when all the charges of a spell are available.
 Shows the aura when a spell is usable. For spells that have requirements for their activation like _Rampage_ or _Shadow Word: Madness_.
 
 `M33kTriggers.ShowOnExecute(aura_env, SpellIdentifier, BelowHpPercent)`  
-Shows the aura when an execute spell should be used (is off CD and target is below X% HP).
+Shows the aura when an execute-type spell should be used (is off CD and target is below X% HP).
 
 `M33kTriggers.ShowOnPowerPercent(aura_env, Percent)`  
 Shows the aura when the player's power is higher than or equal to a certain percentage.

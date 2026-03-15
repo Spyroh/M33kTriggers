@@ -7,8 +7,8 @@
 --╚════════════════════════════════════╝
 
 -- Upvalues
-local C_Spell, RunNextFrame, UnitExists, UnitCanAttack, UnitIsDeadOrGhost, UnitHealthPercent, BuffIconCooldownViewer, BuffBarCooldownViewer
-    = C_Spell, RunNextFrame, UnitExists, UnitCanAttack, UnitIsDeadOrGhost, UnitHealthPercent, BuffIconCooldownViewer, BuffBarCooldownViewer
+local C_Spell, RunNextFrame, UnitExists, UnitCanAttack, UnitIsDead, UnitIsDeadOrGhost, UnitHealthPercent, BuffIconCooldownViewer, BuffBarCooldownViewer
+    = C_Spell, RunNextFrame, UnitExists, UnitCanAttack, UnitIsDead, UnitIsDeadOrGhost, UnitHealthPercent, BuffIconCooldownViewer, BuffBarCooldownViewer
 
 M33kTriggers = {} -- Global table to expose the functions
 local LoadedAuras = {} -- Table with the managed auras to always show them when the panel opens
@@ -180,7 +180,7 @@ function M33kTriggers.ShowOnSpellUsable(aura_env, SpellIdentifier)
 end
 
 -- ShowOnExecute()
--- Shows a M33kAura when an execute-type spell should be used (is off CD and target is below X% HP).
+-- Shows a M33kAura when an execute-type spell should be used (is off CD and the target's health is under a certain percentage).
 function M33kTriggers.ShowOnExecute(aura_env, SpellIdentifier, BelowHpPercent)
   local Frame = aura_env.region
   local Region = Frame.text or (Frame.texture and Frame.texture.texture)
@@ -196,9 +196,9 @@ function M33kTriggers.ShowOnExecute(aura_env, SpellIdentifier, BelowHpPercent)
   Region.ExecuteCurve:AddPoint(0, 1) -- Visible (start of the execute range)
   Region.ExecuteCurve:AddPoint(BelowHpPercent * 0.01, 0) -- Invisible (end of the execute range)
 
-  -- Function that shows the region when the target is below X% HP
+  -- Function that shows the region when the target's health is under a certain percentage
   Region.ShowIfShouldUseExecute = function()
-    if IsPanelShown() then Region:SetAlpha(1) -- Always show if the panel M33kAuras is open
+    if IsPanelShown() then Region:SetAlpha(1) -- Always show when the M33kAuras panel is open
     elseif not UnitExists("target") or not UnitCanAttack("player", "target") or UnitIsDeadOrGhost("target") then Region:SetAlpha(0)
     else Region:SetAlpha(UnitHealthPercent("target", true, Region.ExecuteCurve)) end
   end
@@ -260,6 +260,45 @@ function M33kTriggers.ShowOnPowerPercent(aura_env, Percent)
   LoadedAuras[Frame] = Frame
 end
 
+-- ShowOnPetHpUnderPercent()
+-- Shows a M33kAura when the health of your pet is under a certain percentage.
+function M33kTriggers.ShowOnPetHpUnderPercent(aura_env, BelowHpPercent)
+  local Frame = aura_env.region
+
+  -- Curve that generates a visible alpha when the pet's health is under a certain percentage
+  Frame.PetHpCurve = Frame.PetHpCurve or C_CurveUtil.CreateCurve()
+  Frame.PetHpCurve:SetType(Enum.LuaCurveType.Step)
+  Frame.PetHpCurve:ClearPoints()
+  Frame.PetHpCurve:AddPoint(0, 1) -- Visible (start of the range)
+  Frame.PetHpCurve:AddPoint(BelowHpPercent * 0.01, 0) -- Invisible (end of the range)
+
+  -- Function that shows the frame when the pet's health is under a certain percentage
+  Frame.ShowIfPetHpUnderPercent = function()
+    if IsPanelShown() then Frame:SetAlpha(1) -- Always show when the M33kAuras panel is open
+    elseif not UnitExists("pet") or UnitIsDead("pet") then Frame:SetAlpha(0)
+    else Frame:SetAlpha(UnitHealthPercent("pet", true, Frame.PetHpCurve)) end
+  end
+  Frame.UpdateFunc = Frame.ShowIfPetHpUnderPercent -- Used by the M33kAurasOptions OnHide hook
+
+  -- Events
+  Frame:RegisterUnitEvent("UNIT_HEALTH", "pet")
+  Frame:RegisterUnitEvent("UNIT_MAXHEALTH", "pet")
+  Frame:RegisterUnitEvent("UNIT_PET", "player")
+  Frame:SetScript("OnEvent", Frame.ShowIfPetHpUnderPercent)
+  Frame.ShowIfPetHpUnderPercent()
+
+  -- Function to unload the triggers
+  aura_env.UnLoad = function()
+    Frame:UnregisterAllEvents()
+    Frame:SetScript("OnEvent", nil)
+    Frame:Hide()
+    Frame:SetAlpha(1)
+    LoadedAuras[Frame] = nil
+  end
+
+  LoadedAuras[Frame] = Frame
+end
+
 -- ShowOnProc()
 -- Shows a M33kAura when a proc in available. Requires having the proc added in the CDM.
 function M33kTriggers.ShowOnProc(aura_env, SpellID)
@@ -274,6 +313,7 @@ function M33kTriggers.ShowOnProc(aura_env, SpellID)
     for BuffIcon in BuffIconCooldownViewer.itemFramePool:EnumerateActive() do
       if BuffIcon:GetBaseSpellID() == SpellID then
         Frame:SetShown(BuffIcon.Cooldown:IsShown())
+        return
       end
     end
 
@@ -281,6 +321,7 @@ function M33kTriggers.ShowOnProc(aura_env, SpellID)
     for BuffBar in BuffBarCooldownViewer.itemFramePool:EnumerateActive() do
       if BuffBar:GetBaseSpellID() == SpellID then
         Frame:SetShown(BuffBar:IsShown())
+        return
       end
     end
   end
@@ -317,6 +358,7 @@ function M33kTriggers.ShowProcStacks(aura_env, SpellID)
     for BuffIcon in BuffIconCooldownViewer.itemFramePool:EnumerateActive() do
       if BuffIcon:GetBaseSpellID() == SpellID then
         Stacks:SetText(BuffIcon.Applications.Applications:GetText())
+        return
       end
     end
   end

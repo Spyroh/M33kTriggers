@@ -8,7 +8,7 @@ An Addon for an Addon. 😜
 
 ## Triggers. Use in *Actions -> Custom functions -> Custom Load*
 `M33kTriggers.ShowOnCdReady(aura_env, SpellIdentifier)`  
-Shows the aura when a spell is off CD. If used with a spell with charges, it will trigger when at least 1 charge is available.  
+Shows the aura when a spell is off CD. If used with a spell with charges it will trigger when at least 1 charge is available.  
 
 `M33kTriggers.ShowOnAllChargesReady(aura_env, SpellIdentifier)`  
 Shows the aura when all the charges of a spell are available.  

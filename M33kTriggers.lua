@@ -15,19 +15,12 @@ local LoadedAuras = {} -- Table with the managed auras to always show them when 
 local Panel -- Will store a reference to the M33kAurasOptions panel when it's created
 
 -- Curve for the ShowOnCdReady trigger
--- Spells with less that 0.5sec CD left will be considered ready (will be made visible). This allows to use a less aggresive ticker (0.3sec)
+-- Spells with less than 0.5sec CD left will be considered ready (will be made visible). This allows to use a less aggresive ticker (0.3sec)
 -- checking the state of the CD (which is needed coz SPELL_UPDATE_COOLDOWN is not totally reliable) and helps the user with reaction time
 local CdAlphaCurve = C_CurveUtil.CreateCurve()
 CdAlphaCurve:SetType(Enum.LuaCurveType.Step)
 CdAlphaCurve:AddPoint(0, 1) -- Visible alpha for available (off CD)
 CdAlphaCurve:AddPoint(0.5, 0) -- Invisible alpha for unavailable (CD >= 0.5sec)
-
--- Curve for the ShowOnAllChargesReady trigger
--- Spells with charges don't need a ticker coz SPELL_UPDATE_CHARGES is 100% reliable
-local ChargesAlphaCurve = C_CurveUtil.CreateCurve()
-ChargesAlphaCurve:SetType(Enum.LuaCurveType.Step)
-ChargesAlphaCurve:AddPoint(0, 1) -- Visible alpha for available (off CD)
-ChargesAlphaCurve:AddPoint(0.001, 0) -- Invisible alpha for unavailable (CD higher than 0)
 
 -- Hooks to show the modded auras when the M33kAuras panel opens
 hooksecurefunc("CreateFrame", function(_, Name)
@@ -59,13 +52,13 @@ local function IsPanelShown()
 end
 
 -- ShowOnCdReady()
--- Shows a M33kAura when a spell is off CD.
+-- Shows a M33kAura when a spell is off CD. If used with a spell with charges it will trigger when at least 1 charge is available.
 function M33kTriggers.ShowOnCdReady(aura_env, SpellIdentifier)
   local Frame = aura_env.region
 
   -- Function that shows the frame if the CD is available
   Frame.ShowIfCdReady = function()
-    if C_Spell.GetSpellCooldown(SpellIdentifier).isOnGCD or IsPanelShown() then -- CD ready but on GCD
+    if C_Spell.GetSpellCooldown(SpellIdentifier).isOnGCD or IsPanelShown() then -- Off CD but on GCD
       Frame:SetAlpha(1)
     else -- Not on GCD, make visible if ready
       Frame:SetAlpha(C_Spell.GetSpellCooldownDuration(SpellIdentifier):EvaluateRemainingDuration(CdAlphaCurve))
@@ -123,7 +116,7 @@ function M33kTriggers.ShowOnAllChargesReady(aura_env, SpellIdentifier)
   -- Function that shows the frame when all charges are available
   Frame.ShowIfAllChargesReady = function()
     if IsPanelShown() then Frame:SetAlpha(1) -- Always show when the M33kAuras panel is open
-    else Frame:SetAlpha(C_Spell.GetSpellChargeDuration(SpellIdentifier):EvaluateRemainingDuration(ChargesAlphaCurve)) end
+    else Frame:SetAlphaFromBoolean(not C_Spell.GetSpellCharges(SpellIdentifier).isActive) end
   end
   Frame.UpdateFunc = Frame.ShowIfAllChargesReady -- Used by the M33kAurasOptions OnHide hook
 
@@ -180,7 +173,7 @@ function M33kTriggers.ShowOnSpellUsable(aura_env, SpellIdentifier)
 end
 
 -- ShowOnExecute()
--- Shows a M33kAura when an execute-type spell should be used (is off CD and the target's health is under a certain percentage).
+-- Shows a M33kAura when an execute-type spell should be used (is off CD and the target's health is below a certain percentage).
 function M33kTriggers.ShowOnExecute(aura_env, SpellIdentifier, BelowHpPercent)
   local Frame = aura_env.region
   local Region = Frame.text or (Frame.texture and Frame.texture.texture)
@@ -196,7 +189,7 @@ function M33kTriggers.ShowOnExecute(aura_env, SpellIdentifier, BelowHpPercent)
   Region.ExecuteCurve:AddPoint(0, 1) -- Visible (start of the execute range)
   Region.ExecuteCurve:AddPoint(BelowHpPercent * 0.01, 0) -- Invisible (end of the execute range)
 
-  -- Function that shows the region when the target's health is under a certain percentage
+  -- Function that shows the region when the target's health is below a certain percentage
   Region.ShowIfShouldUseExecute = function()
     if IsPanelShown() then Region:SetAlpha(1) -- Always show when the M33kAuras panel is open
     elseif not UnitExists("target") or not UnitCanAttack("player", "target") or UnitIsDeadOrGhost("target") then Region:SetAlpha(0)
@@ -261,7 +254,7 @@ function M33kTriggers.ShowOnPowerPercent(aura_env, Percent)
 end
 
 -- ShowOnPetHpUnderPercent()
--- Shows a M33kAura when the health of your pet is under a certain percentage.
+-- Shows a M33kAura when the health of your pet is below a certain percentage.
 function M33kTriggers.ShowOnPetHpUnderPercent(aura_env, BelowHpPercent)
   local Frame = aura_env.region
 
@@ -272,7 +265,7 @@ function M33kTriggers.ShowOnPetHpUnderPercent(aura_env, BelowHpPercent)
   Frame.PetHpCurve:AddPoint(0, 1) -- Visible (start of the range)
   Frame.PetHpCurve:AddPoint(BelowHpPercent * 0.01, 0) -- Invisible (end of the range)
 
-  -- Function that shows the frame when the pet's health is under a certain percentage
+  -- Function that shows the frame when the pet's health is below a certain percentage
   Frame.ShowIfPetHpUnderPercent = function()
     if IsPanelShown() then Frame:SetAlpha(1) -- Always show when the M33kAuras panel is open
     elseif not UnitExists("pet") or UnitIsDead("pet") then Frame:SetAlpha(0)

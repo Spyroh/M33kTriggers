@@ -2,7 +2,7 @@
 ## IconTexture: Interface\Icons\Trade_Engineering
 ## Title: M33kTriggers
 ## Notes: Functions to add triggers to M33kAuras
-## Version: 0.4
+## Version: 0.5
 ## Author: Spyro
 
 M33kTriggers.lua
